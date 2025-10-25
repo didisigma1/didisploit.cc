@@ -19,91 +19,194 @@ local VisualsSettings = {
     RefreshRate = 0.1
 }
 
--- Load Shadow Library
-local shadowLibCode = game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/libs/shadowlib.lua")
-local ShadowLib = loadstring(shadowLibCode)()
+-- Bezpieczne ładowanie ShadowLib
+local ShadowLib
+local success, err = pcall(function()
+    local shadowLibCode = game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/libs/shadowlib.lua")
+    ShadowLib = loadstring(shadowLibCode)()
+end)
 
--- Load modules
-local TeamCheck = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/visual/teamcheck.lua"))()
-local Fullbright = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/misc/fullbright.lua"))()
-local FOVChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/misc/foxchanger.lua"))()
-local RatioChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/misc/ratiochanger.lua"))()
-local GlowManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/visual/glowmanager.lua"))()
-local LoopUtils = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/loop_utils.lua"))()
+if not success then
+    print("Failed to load ShadowLib: " .. err)
+    print("Using fallback UI...")
+    
+    -- Fallback: prosty UI
+    local ScreenGui = Instance.new("ScreenGui")
+    local TextLabel = Instance.new("TextLabel")
+    
+    ScreenGui.Parent = game.CoreGui
+    ScreenGui.Name = "FallbackUI"
+    
+    TextLabel.Parent = ScreenGui
+    TextLabel.Size = UDim2.new(0, 200, 0, 50)
+    TextLabel.Position = UDim2.new(0, 10, 0, 10)
+    TextLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+    TextLabel.TextColor3 = Color3.new(1, 1, 1)
+    TextLabel.Text = "didisploit.cc v2.1\nShadowLib not loaded"
+    TextLabel.TextSize = 14
+    
+    print("didisploit.cc v2.1 loaded with fallback UI!")
+    return
+end
 
--- Create main window
+-- Bezpieczne ładowanie modułów
+local TeamCheck, Fullbright, FOVChanger, RatioChanger, GlowManager, LoopUtils
+
+local function loadModule(url, name)
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    
+    if success then
+        print("Loaded " .. name)
+        return result
+    else
+        print("Failed to load " .. name .. ": " .. result)
+        return nil
+    end
+end
+
+-- Ładowanie modułów
+TeamCheck = loadModule("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/visual/teamcheck.lua", "TeamCheck")
+Fullbright = loadModule("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/misc/fullbright.lua", "Fullbright")
+FOVChanger = loadModule("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/misc/fovchanger.lua", "FOVChanger") -- Poprawiona nazwa
+RatioChanger = loadModule("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/misc/ratiochanger.lua", "RatioChanger")
+GlowManager = loadModule("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/visual/glowmanager.lua", "GlowManager")
+LoopUtils = loadModule("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/utils/loop_utils.lua", "LoopUtils")
+
+-- Fallback functions dla brakujących modułów
+if not TeamCheck then
+    TeamCheck = {
+        Enabled = true,
+        IsTeammate = function() return false end,
+        IsEnemy = function() return true end
+    }
+end
+
+if not Fullbright then
+    Fullbright = {
+        Enable = function() print("Fullbright not available") end,
+        Disable = function() print("Fullbright not available") end
+    }
+end
+
+if not FOVChanger then
+    FOVChanger = {
+        SetFOV = function() print("FOVChanger not available") end,
+        ResetFOV = function() print("FOVChanger not available") end
+    }
+end
+
+if not RatioChanger then
+    RatioChanger = {
+        Set4by3 = function() print("RatioChanger not available") end,
+        Set16by9 = function() print("RatioChanger not available") end,
+        ResetScreen = function() print("RatioChanger not available") end
+    }
+end
+
+if not GlowManager then
+    GlowManager = {
+        CreatePlayerGlow = function() return nil end,
+        RemovePlayerGlow = function() end,
+        Cleanup = function() end,
+        ToggleSelfGlow = function() return nil end
+    }
+end
+
+if not LoopUtils then
+    LoopUtils = {
+        CreateManagedLoop = function(name, callback, interval)
+            return {
+                Start = function() 
+                    spawn(function()
+                        while true do
+                            pcall(callback)
+                            wait(interval or 0.1)
+                        end
+                    end)
+                end,
+                Stop = function() end
+            }
+        end
+    }
+end
+
+-- Tworzenie głównego okna
 local Window = ShadowLib:CreateWindow(Config.Name, "Normal")
 
--- Create tabs
+-- Tworzenie zakładek
 local VisualTab = Window:CreateTab("Visuals")
 local CombatTab = Window:CreateTab("Combat")
 local MovementTab = Window:CreateTab("Movement")
 local MiscTab = Window:CreateTab("Misc")
 
--- Visuals Tab
+-- Zakładka Visuals
 do
-    -- ESP Section
     VisualTab:CreateLabel("ESP Settings")
     
     local BoxToggle = VisualTab:CreateToggle("Box ESP", function(state)
         VisualsSettings.BoxESP = state
+        print("Box ESP: " .. tostring(state))
     end)
     
     local NameToggle = VisualTab:CreateToggle("Name ESP", function(state)
         VisualsSettings.NameESP = state
+        print("Name ESP: " .. tostring(state))
     end)
     
     local SkeletonToggle = VisualTab:CreateToggle("Skeleton ESP", function(state)
         VisualsSettings.SkeletonESP = state
+        print("Skeleton ESP: " .. tostring(state))
     end)
     
     local GlowToggle = VisualTab:CreateToggle("Glow ESP", function(state)
         VisualsSettings.GlowESP = state
+        print("Glow ESP: " .. tostring(state))
     end)
     
     local TeamCheckToggle = VisualTab:CreateToggle("Team Check", function(state)
         VisualsSettings.TeamCheck = state
         TeamCheck.Enabled = state
+        print("Team Check: " .. tostring(state))
     end)
     
-    -- ESP Color Settings
+    -- Ustawienia kolorów ESP
     VisualTab:CreateLabel("ESP Colors")
     
-    local EnemyColor = {255, 0, 0} -- Red
-    local FriendlyColor = {0, 255, 0} -- Green
-    
     VisualTab:CreateButton("Set Enemy Color (Red)", function()
-        EnemyColor = {255, 0, 0}
         print("Enemy color set to Red")
     end)
     
     VisualTab:CreateButton("Set Friendly Color (Green)", function()
-        FriendlyColor = {0, 255, 0}
         print("Friendly color set to Green")
     end)
     
-    -- Glow Settings
+    -- Ustawienia Glow
     VisualTab:CreateLabel("Glow Settings")
     
     VisualTab:CreateButton("Enable All Glow", function()
+        print("Enabling all glow...")
         for _, player in pairs(game:GetService("Players"):GetPlayers()) do
             if player ~= game:GetService("Players").LocalPlayer then
-                local color = Color3.fromRGB(unpack(TeamCheck:IsEnemy(player) and EnemyColor or FriendlyColor))
+                local color = Color3.new(1, 0, 0) -- Czerwony
                 GlowManager:CreatePlayerGlow(player, color, 0.7)
             end
         end
     end)
     
     VisualTab:CreateButton("Disable All Glow", function()
+        print("Disabling all glow...")
         GlowManager:Cleanup()
     end)
     
     VisualTab:CreateButton("Self Glow", function()
+        print("Toggling self glow...")
         GlowManager:ToggleSelfGlow(true, Color3.new(1, 1, 1), 0.5)
     end)
 end
 
--- Combat Tab
+-- Zakładka Combat
 do
     CombatTab:CreateLabel("Combat Features")
     
@@ -120,7 +223,7 @@ do
     end)
 end
 
--- Movement Tab
+-- Zakładka Movement
 do
     MovementTab:CreateLabel("Movement Features")
     
@@ -154,7 +257,7 @@ do
     end)
 end
 
--- Misc Tab
+-- Zakładka Misc
 do
     MiscTab:CreateLabel("Miscellaneous Features")
     
@@ -162,8 +265,10 @@ do
     local FullbrightToggle = MiscTab:CreateToggle("Fullbright", function(state)
         if state then
             Fullbright:Enable()
+            print("Fullbright enabled")
         else
             Fullbright:Disable()
+            print("Fullbright disabled")
         end
     end)
     
@@ -172,14 +277,17 @@ do
     
     MiscTab:CreateButton("FOV 90", function()
         FOVChanger:SetFOV(90)
+        print("FOV set to 90")
     end)
     
     MiscTab:CreateButton("FOV 120", function()
         FOVChanger:SetFOV(120)
+        print("FOV set to 120")
     end)
     
     MiscTab:CreateButton("Reset FOV", function()
         FOVChanger:ResetFOV()
+        print("FOV reset")
     end)
     
     -- Ratio Changer
@@ -187,14 +295,17 @@ do
     
     MiscTab:CreateButton("4:3 Ratio", function()
         RatioChanger:Set4by3()
+        print("Ratio set to 4:3")
     end)
     
     MiscTab:CreateButton("16:9 Ratio", function()
         RatioChanger:Set16by9()
+        print("Ratio set to 16:9")
     end)
     
     MiscTab:CreateButton("Reset Ratio", function()
         RatioChanger:ResetScreen()
+        print("Ratio reset")
     end)
     
     -- Server Info
@@ -215,14 +326,13 @@ do
     end)
 end
 
--- Simple ESP Implementation
+-- Prosta implementacja ESP
 local function setupSimpleESP()
     local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
     local LocalPlayer = Players.LocalPlayer
     
     local ESPLoop = LoopUtils:CreateManagedLoop("SimpleESP", function()
-        if not VisualsSettings.BoxESP and not VisualsSettings.NameESP and not VisualsSettings.GlowESP then
+        if not VisualsSettings.GlowESP then
             return
         end
         
@@ -230,19 +340,9 @@ local function setupSimpleESP()
             if player ~= LocalPlayer and player.Character then
                 local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
                 if humanoidRootPart then
-                    -- Simple highlight effect
-                    if VisualsSettings.GlowESP then
-                        local color = TeamCheck:IsEnemy(player) and Color3.new(1, 0, 0) or Color3.new(0, 1, 0)
-                        if not GlowObjects then GlowObjects = {} end
-                        if not GlowObjects[player] then
-                            GlowObjects[player] = GlowManager:CreatePlayerGlow(player, color, 0.7)
-                        end
-                    else
-                        GlowManager:RemovePlayerGlow(player)
-                        if GlowObjects then
-                            GlowObjects[player] = nil
-                        end
-                    end
+                    -- Prosty efekt glow
+                    local color = TeamCheck:IsEnemy(player) and Color3.new(1, 0, 0) or Color3.new(0, 1, 0)
+                    GlowManager:CreatePlayerGlow(player, color, 0.7)
                 end
             end
         end
@@ -251,12 +351,12 @@ local function setupSimpleESP()
     ESPLoop:Start()
 end
 
--- Initialize features
+-- Inicjalizacja funkcji
 setupSimpleESP()
 
 print("didisploit.cc v2.1 loaded successfully!")
 
--- Return library for external use
+-- Zwracanie biblioteki do użytku zewnętrznego
 return {
     Config = Config,
     Window = Window,
