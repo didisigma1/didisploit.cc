@@ -21,10 +21,12 @@ local CombatTab = Window:CreateTab("Combat")
 local MovementTab = Window:CreateTab("Movement")
 local MiscTab = Window:CreateTab("Misc")
 
--- Load misc modules
-local FOVChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/modules/misc/fovchanger.lua"))()
-local Fullbright = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/modules/misc/fullbright.lua"))()
-local RatioChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/modules/misc/ratiochanger.lua"))()
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Lighting = game:GetService("Lighting")
 
 -- Visuals settings
 local VisualsSettings = {
@@ -49,12 +51,6 @@ local MiscSettings = {
     FullbrightEnabled = false,
     CurrentRatio = "16:9"
 }
-
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
 -- ESP Objects
 local ESPObjects = {}
@@ -230,7 +226,55 @@ end
 
 -- Update FOV
 local function updateFOV()
-    FOVChanger:SetFOV(VisualsSettings.FOV)
+    Camera.FieldOfView = VisualsSettings.FOV
+end
+
+-- Fullbright functions
+local OriginalLightingSettings = {}
+
+local function enableFullbright()
+    OriginalLightingSettings = {
+        GlobalShadows = Lighting.GlobalShadows,
+        Ambient = Lighting.Ambient,
+        Brightness = Lighting.Brightness,
+        ClockTime = Lighting.ClockTime,
+        FogEnd = Lighting.FogEnd
+    }
+    
+    Lighting.GlobalShadows = false
+    Lighting.Ambient = Color3.new(1, 1, 1)
+    Lighting.Brightness = 2
+    Lighting.ClockTime = 12
+    Lighting.FogEnd = 100000
+end
+
+local function disableFullbright()
+    if OriginalLightingSettings.GlobalShadows ~= nil then
+        Lighting.GlobalShadows = OriginalLightingSettings.GlobalShadows
+        Lighting.Ambient = OriginalLightingSettings.Ambient
+        Lighting.Brightness = OriginalLightingSettings.Brightness
+        Lighting.ClockTime = OriginalLightingSettings.ClockTime
+        Lighting.FogEnd = OriginalLightingSettings.FogEnd or 10000
+    end
+end
+
+-- Ratio Changer functions
+local OriginalViewportSize = nil
+
+local function setRatio(ratio)
+    if not OriginalViewportSize then
+        OriginalViewportSize = Camera.ViewportSize
+    end
+    
+    if ratio == "16:9" then
+        Camera.ViewportSize = OriginalViewportSize
+    elseif ratio == "4:3" then
+        Camera.ViewportSize = Vector2.new(math.floor(OriginalViewportSize.X * 1.3333), OriginalViewportSize.Y)
+    elseif ratio == "16:10" then
+        Camera.ViewportSize = Vector2.new(math.floor(OriginalViewportSize.X * 1.6), OriginalViewportSize.Y)
+    elseif ratio == "21:9" then
+        Camera.ViewportSize = Vector2.new(math.floor(OriginalViewportSize.X * 2.3333), OriginalViewportSize.Y)
+    end
 end
 
 -- ESP Loop
@@ -327,23 +371,15 @@ end)
 MiscTab:CreateToggle("Fullbright", function(state)
     MiscSettings.FullbrightEnabled = state
     if state then
-        Fullbright:Enable()
+        enableFullbright()
     else
-        Fullbright:Disable()
+        disableFullbright()
     end
 end)
 
 MiscTab:CreateDropdown("Aspect Ratio", {"16:9", "4:3", "16:10", "21:9"}, function(ratio)
     MiscSettings.CurrentRatio = ratio
-    if ratio == "16:9" then
-        RatioChanger:ResetScreen()
-    elseif ratio == "4:3" then
-        RatioChanger:Set4by3()
-    elseif ratio == "16:10" then
-        RatioChanger:Set16by10()
-    elseif ratio == "21:9" then
-        RatioChanger:Set21by9()
-    end
+    setRatio(ratio)
 end)
 
 -- Set default FOV
