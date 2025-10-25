@@ -660,7 +660,17 @@ function InsideTab:CreateButton(text, callback)
     Button.MouseButton1Click:Connect(function()
     pcall(callback)
     play("rbxassetid://178104975")
-end)
+    end)
+end  -- ← TEN JEST
+
+return InsideTab
+end  -- ← TEN JEST
+
+return InsideLibrary  
+end  -- ← TEN JEST
+
+-- FIX: Return table, not function
+return library
 
 
 return InsideTab
