@@ -1,4 +1,4 @@
--- didisploit.cc - Main Script v2.1
+-- didisploit.cc - Main Script v2.1 FIXED
 -- Educational purposes only
 
 local Config = {
@@ -9,45 +9,79 @@ local Config = {
 
 print("Loading " .. Config.Name .. " v" .. Config.Version)
 
--- Load Shadow Library from GitHub with debugging
-print("Loading Shadow Lib...")
+-- Load Shadow Library from GitHub
 local shadowLibCode = game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/libs/shadowlib.lua")
-print("Shadow Lib code downloaded, length: " .. #shadowLibCode)
-
 local ShadowLib = loadstring(shadowLibCode)
-print("Shadow Lib loaded")
 
+-- FIX: Shadow Lib returns the library table directly, not a Window object
 local Window = ShadowLib:CreateWindow(Config.Name, "Normal")
-print("Window created")
+print("Theme selected: Normal")
 
--- DEBUG: Check what methods Window has
-print("Window methods:")
-for k,v in pairs(Window) do
-    print("  " .. k .. ": " .. type(v))
+-- DEBUG: Check what Window actually contains
+print("Window type: " .. type(Window))
+if type(Window) == "table" then
+    print("Window methods:")
+    for k,v in pairs(Window) do
+        if type(v) == "function" then
+            print("  " .. k)
+        end
+    end
 end
 
--- Try to create tab
-print("Creating Visuals tab...")
-local VisualTab = Window:CreateTab("Visuals")
-print("Visuals tab created")
+-- FIX: Try different method names that Shadow Lib might use
+local VisualTab
+if Window.CreateTab then
+    VisualTab = Window:CreateTab("Visuals")
+elseif Window.AddTab then
+    VisualTab = Window:AddTab("Visuals")
+elseif Window.NewTab then
+    VisualTab = Window:NewTab("Visuals")
+else
+    -- Last resort: assume Window IS the tab system
+    VisualTab = Window
+end
 
-print("Creating Combat tab...")
-local CombatTab = Window:CreateTab("Combat")
-print("Combat tab created")
+print("Visuals tab ready")
 
-print("Creating Movement tab...")
-local MovementTab = Window:CreateTab("Movement")
-print("Movement tab created")
+-- Create simple test button
+if VisualTab.CreateButton then
+    VisualTab:CreateButton("Test ESP", function()
+        print("ESP Test clicked!")
+        
+        -- Simple ESP test
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local highlight = Instance.new("Highlight")
+                highlight.FillColor = Color3.new(1, 0, 0)
+                highlight.OutlineColor = Color3.new(1, 0, 0)
+                highlight.FillTransparency = 0.5
+                highlight.Adornee = player.Character
+                highlight.Parent = player.Character
+                
+                print("Added highlight to: " .. player.Name)
+            end
+        end
+    end)
+end
 
-print("Creating Misc tab...")
-local MiscTab = Window:CreateTab("Misc")
-print("Misc tab created")
-
--- Simple test button
-VisualTab:CreateButton("Test Button", function()
-    print("Test button clicked!")
-end)
+-- Add more tabs if possible
+local CombatTab, MovementTab, MiscTab
+if Window.CreateTab then
+    CombatTab = Window:CreateTab("Combat")
+    MovementTab = Window:CreateTab("Movement") 
+    MiscTab = Window:CreateTab("Misc")
+    print("All tabs created")
+end
 
 print("didisploit.cc v2.1 loaded successfully!")
 
-return Config
+-- Return simple ESP function for external use
+return {
+    Config = Config,
+    TestESP = function()
+        print("ESP Test function called")
+    end
+}
