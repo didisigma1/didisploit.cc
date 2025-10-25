@@ -1,4 +1,4 @@
--- didisploit.cc - Main Script (FIXED VERSION)
+-- didisploit.cc - Main Script (FIXED GITHUB LINKS)
 -- Educational purposes only
 
 local Config = {
@@ -9,7 +9,7 @@ local Config = {
 
 print("Loading " .. Config.Name .. " v" .. Config.Version)
 
--- Load Shadow Library from GitHub (tymczasowe rozwiązanie)
+-- Load Shadow Library from GitHub (RAW LINK)
 local ShadowLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/libs/shadowlib.lua"))()
 
 -- Create main window
@@ -27,53 +27,40 @@ local VisualsSettings = {
     SkeletonESP = false,
     GlowESP = false,
     TeamCheck = true,
-    RefreshRate = 0.1 -- seconds
+    RefreshRate = 0.1
 }
 
--- Load ESP module directly (bez folderów)
+-- Simple ESP system
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-
 local ESPObjects = {}
-local ESPLoop
 
--- Colors
-local TeamColors = {
-    Enemy = Color3.fromRGB(255, 0, 0),    -- Red
-    Friendly = Color3.fromRGB(0, 255, 0), -- Green
-    Neutral = Color3.fromRGB(255, 255, 0) -- Yellow
-}
-
--- Get player color based on team check
 local function getPlayerColor(player)
-    if not VisualsSettings.TeamCheck then
-        return TeamColors.Enemy
-    end
-    
-    if player.Team == LocalPlayer.Team then
-        return TeamColors.Friendly
+    if not VisualsSettings.TeamCheck or player.Team ~= LocalPlayer.Team then
+        return Color3.fromRGB(255, 0, 0) -- Red for enemies
     else
-        return TeamColors.Enemy
+        return Color3.fromRGB(0, 255, 0) -- Green for teammates
     end
 end
 
--- Create ESP for player
 local function createESP(player)
     if player == LocalPlayer then return end
     if not player.Character then return end
     
     local character = player.Character
-    local humanoid = character:FindFirstChild("Humanoid")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
     
-    if not humanoid or not humanoidRootPart then return end
+    -- Remove existing ESP
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+    end
     
-    -- Create ESP folder for player
+    -- Create ESP folder
     local espFolder = Instance.new("Folder")
     espFolder.Name = player.Name .. "_ESP"
     espFolder.Parent = game.CoreGui
-    
     ESPObjects[player] = espFolder
     
     -- Box ESP
@@ -106,7 +93,6 @@ local function createESP(player)
     nameLabel.Font = Enum.Font.SourceSansBold
     nameLabel.Visible = VisualsSettings.NameESP
     nameLabel.Parent = billboard
-    
     billboard.Parent = espFolder
     
     -- Glow ESP
@@ -121,7 +107,6 @@ local function createESP(player)
     glow.Parent = espFolder
 end
 
--- Remove ESP for player
 local function removeESP(player)
     if ESPObjects[player] then
         ESPObjects[player]:Destroy()
@@ -129,11 +114,9 @@ local function removeESP(player)
     end
 end
 
--- Update all ESP
-function updateESP()
+local function updateAllESP()
     for player, espFolder in pairs(ESPObjects) do
         if espFolder and espFolder.Parent then
-            -- Update colors
             local color = getPlayerColor(player)
             
             -- Update box
@@ -160,59 +143,56 @@ function updateESP()
                 glow.OutlineColor = color
                 glow.Enabled = VisualsSettings.GlowESP
             end
-        else
-            ESPObjects[player] = nil
         end
     end
 end
 
--- Main ESP loop
-function startESPLoop()
+-- ESP Loop
+local ESPLoop
+local function startESPLoop()
     if ESPLoop then
         ESPLoop:Disconnect()
     end
     
     ESPLoop = RunService.Heartbeat:Connect(function()
-        -- Clean up dead players
+        -- Clean up
         for player, espFolder in pairs(ESPObjects) do
-            if not Players:FindFirstChild(player.Name) or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            if not Players:FindFirstChild(player.Name) or not player.Character then
                 removeESP(player)
             end
         end
         
-        -- Add ESP for new players
+        -- Add new players
         for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not ESPObjects[player] and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if player ~= LocalPlayer and not ESPObjects[player] and player.Character then
                 createESP(player)
             end
         end
         
-        -- Update existing ESP
-        updateESP()
-        
+        updateAllESP()
         wait(VisualsSettings.RefreshRate)
     end)
 end
 
--- Visuals toggles
+-- GUI Controls
 VisualTab:CreateToggle("Box ESP", function(state)
     VisualsSettings.BoxESP = state
-    updateESP()
+    updateAllESP()
 end)
 
 VisualTab:CreateToggle("Name ESP", function(state)
     VisualsSettings.NameESP = state
-    updateESP()
+    updateAllESP()
 end)
 
 VisualTab:CreateToggle("Glow ESP", function(state)
     VisualsSettings.GlowESP = state
-    updateESP()
+    updateAllESP()
 end)
 
 VisualTab:CreateToggle("Team Check", function(state)
     VisualsSettings.TeamCheck = state
-    updateESP()
+    updateAllESP()
 end)
 
 VisualTab:CreateSlider("Refresh Rate", 0.1, 5, function(value)
@@ -220,20 +200,26 @@ VisualTab:CreateSlider("Refresh Rate", 0.1, 5, function(value)
     startESPLoop()
 end)
 
--- Initialize ESP for existing players
+-- Initialize
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         createESP(player)
     end
 end
 
--- Start ESP loop
 startESPLoop()
 
-print("didisploit.cc loaded successfully!")
+-- Player connections
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        wait(1)
+        createESP(player)
+    end)
+end)
 
-return {
-    Config = Config,
-    Window = Window,
-    Settings = VisualsSettings
-}
+Players.PlayerRemoving:Connect(function(player)
+    removeESP(player)
+end)
+
+print("didisploit.cc loaded successfully!")
+return Config
