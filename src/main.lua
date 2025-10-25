@@ -22,9 +22,9 @@ local MovementTab = Window:CreateTab("Movement")
 local MiscTab = Window:CreateTab("Misc")
 
 -- Load misc modules
-local FOVChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/modules/misc/fovchanger.lua"))()
-local Fullbright = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/modules/misc/fullbright.lua"))()
-local RatioChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/modules/misc/ratiochanger.lua"))()
+local FOVChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/modules/misc/fovchanger.lua"))()
+local Fullbright = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/modules/misc/fullbright.lua"))()
+local RatioChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/modules/misc/ratiochanger.lua"))()
 
 -- Visuals settings
 local VisualsSettings = {
