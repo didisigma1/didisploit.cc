@@ -1,9 +1,9 @@
--- didisploit.cc - Main Script v2.0
+-- didisploit.cc - Main Script v2.1
 -- Educational purposes only
 
 local Config = {
     Name = "didisploit.cc",
-    Version = "2.0",
+    Version = "2.1",
     Author = "didisigma1"
 }
 
@@ -21,6 +21,11 @@ local CombatTab = Window:CreateTab("Combat")
 local MovementTab = Window:CreateTab("Movement")
 local MiscTab = Window:CreateTab("Misc")
 
+-- Load misc modules
+local FOVChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/modules/misc/fovchanger.lua"))()
+local Fullbright = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/modules/misc/fullbright.lua"))()
+local RatioChanger = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/modules/misc/ratiochanger.lua"))()
+
 -- Visuals settings
 local VisualsSettings = {
     -- Players
@@ -37,6 +42,12 @@ local VisualsSettings = {
     RefreshRate = 0.1,
     FOV = 80,
     GlowIntensity = 0.7
+}
+
+-- Misc settings
+local MiscSettings = {
+    FullbrightEnabled = false,
+    CurrentRatio = "16:9"
 }
 
 -- Services
@@ -219,7 +230,7 @@ end
 
 -- Update FOV
 local function updateFOV()
-    Camera.FieldOfView = VisualsSettings.FOV
+    FOVChanger:SetFOV(VisualsSettings.FOV)
 end
 
 -- ESP Loop
@@ -258,7 +269,7 @@ end
 -- Create Visuals subtabs
 local PlayersSubTab = VisualTab:CreateTab("Players")
 local SelfSubTab = VisualTab:CreateTab("Self")
-local MiscSubTab = VisualTab:CreateTab("Misc")
+local MiscVisualsSubTab = VisualTab:CreateTab("Misc")
 
 -- Players Tab Controls
 PlayersSubTab:CreateToggle("Enemy Only", function(state)
@@ -296,20 +307,43 @@ SelfSubTab:CreateToggle("Self Glow", function(state)
     end
 end)
 
--- Misc Tab Controls
-MiscSubTab:CreateSlider("Refresh Rate", 0.1, 5, function(value)
+-- Misc Visuals Tab Controls
+MiscVisualsSubTab:CreateSlider("Refresh Rate", 0.1, 5, function(value)
     VisualsSettings.RefreshRate = value
     startESPLoop()
 end)
 
-MiscSubTab:CreateSlider("FOV", 70, 120, function(value)
+MiscVisualsSubTab:CreateSlider("FOV", 70, 120, function(value)
     VisualsSettings.FOV = value
     updateFOV()
 end)
 
-MiscSubTab:CreateSlider("Glow Intensity", 0.1, 0.9, function(value)
+MiscVisualsSubTab:CreateSlider("Glow Intensity", 0.1, 0.9, function(value)
     VisualsSettings.GlowIntensity = value
     updateAllESP()
+end)
+
+-- Main Misc Tab Controls
+MiscTab:CreateToggle("Fullbright", function(state)
+    MiscSettings.FullbrightEnabled = state
+    if state then
+        Fullbright:Enable()
+    else
+        Fullbright:Disable()
+    end
+end)
+
+MiscTab:CreateDropdown("Aspect Ratio", {"16:9", "4:3", "16:10", "21:9"}, function(ratio)
+    MiscSettings.CurrentRatio = ratio
+    if ratio == "16:9" then
+        RatioChanger:ResetScreen()
+    elseif ratio == "4:3" then
+        RatioChanger:Set4by3()
+    elseif ratio == "16:10" then
+        RatioChanger:Set16by10()
+    elseif ratio == "21:9" then
+        RatioChanger:Set21by9()
+    end
 end)
 
 -- Set default FOV
@@ -351,5 +385,5 @@ LocalPlayer.CharacterAdded:Connect(function(character)
     end
 end)
 
-print("didisploit.cc v2.0 loaded successfully!")
+print("didisploit.cc v2.1 loaded successfully!")
 return Config
