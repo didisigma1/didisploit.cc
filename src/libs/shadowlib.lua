@@ -564,7 +564,6 @@ function InsideTab:CreateCheckbox(text,callback)
     local InsideCheatFrame = Instance.new("ImageLabel")
     local CheatButton = Instance.new("TextButton")
     
-    
     Cheat.Name = "Cheat"
     Cheat.Parent = Frame
     Cheat.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -663,8 +662,11 @@ pcall(callback)
 play("rbxassetid://178104975")
     end)
 end
+
 return InsideTab
 end
+
 return InsideLibrary
 end
+
 return library
