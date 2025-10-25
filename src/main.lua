@@ -1,4 +1,4 @@
--- didisploit.cc - Main Script
+-- didisploit.cc - Main Script (FIXED VERSION)
 -- Educational purposes only
 
 local Config = {
@@ -9,8 +9,8 @@ local Config = {
 
 print("Loading " .. Config.Name .. " v" .. Config.Version)
 
--- Load Shadow Library
-local ShadowLib = loadstring(readfile("src/libs/shadowlib.lua"))()
+-- Load Shadow Library from GitHub (tymczasowe rozwiązanie)
+local ShadowLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/didisigma1/didisploit.cc/main/src/libs/shadowlib.lua"))()
 
 -- Create main window
 local Window = ShadowLib:CreateWindow(Config.Name, "Normal")
@@ -19,9 +19,6 @@ local Window = ShadowLib:CreateWindow(Config.Name, "Normal")
 local VisualTab = Window:CreateTab("Visuals")
 local CombatTab = Window:CreateTab("Combat")
 local MovementTab = Window:CreateTab("Movement")
-
--- Load utility modules
-local LoopUtils = dofile("src/modules/utils/loop_utils.lua")
 
 -- Visuals settings
 local VisualsSettings = {
@@ -33,24 +30,168 @@ local VisualsSettings = {
     RefreshRate = 0.1 -- seconds
 }
 
--- Load modules
-dofile("src/modules/visual/esp.lua")
-dofile("src/modules/visual/teamcheck.lua")
+-- Load ESP module directly (bez folderów)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
--- ESP Loop instance
+local ESPObjects = {}
 local ESPLoop
 
--- Function to restart ESP loop with new refresh rate
-local function restartESPLoop()
-    if ESPLoop then
-        ESPLoop:Stop()
+-- Colors
+local TeamColors = {
+    Enemy = Color3.fromRGB(255, 0, 0),    -- Red
+    Friendly = Color3.fromRGB(0, 255, 0), -- Green
+    Neutral = Color3.fromRGB(255, 255, 0) -- Yellow
+}
+
+-- Get player color based on team check
+local function getPlayerColor(player)
+    if not VisualsSettings.TeamCheck then
+        return TeamColors.Enemy
     end
     
-    ESPLoop = LoopUtils:CreateFastESPUpdate(function()
-        updateESP()
-    end, VisualsSettings.RefreshRate)
+    if player.Team == LocalPlayer.Team then
+        return TeamColors.Friendly
+    else
+        return TeamColors.Enemy
+    end
+end
+
+-- Create ESP for player
+local function createESP(player)
+    if player == LocalPlayer then return end
+    if not player.Character then return end
     
-    ESPLoop:Start()
+    local character = player.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not humanoidRootPart then return end
+    
+    -- Create ESP folder for player
+    local espFolder = Instance.new("Folder")
+    espFolder.Name = player.Name .. "_ESP"
+    espFolder.Parent = game.CoreGui
+    
+    ESPObjects[player] = espFolder
+    
+    -- Box ESP
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "Box"
+    box.Adornee = humanoidRootPart
+    box.AlwaysOnTop = true
+    box.ZIndex = 1
+    box.Size = Vector3.new(4, 6, 1)
+    box.Transparency = 0.5
+    box.Color3 = getPlayerColor(player)
+    box.Visible = VisualsSettings.BoxESP
+    box.Parent = espFolder
+    
+    -- Name ESP
+    local billboard = Instance.new("BillboardGui")
+    local nameLabel = Instance.new("TextLabel")
+    
+    billboard.Name = "Name"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.AlwaysOnTop = true
+    
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = player.Name
+    nameLabel.TextColor3 = getPlayerColor(player)
+    nameLabel.TextSize = 14
+    nameLabel.Font = Enum.Font.SourceSansBold
+    nameLabel.Visible = VisualsSettings.NameESP
+    nameLabel.Parent = billboard
+    
+    billboard.Parent = espFolder
+    
+    -- Glow ESP
+    local glow = Instance.new("Highlight")
+    glow.Name = "Glow"
+    glow.Adornee = character
+    glow.FillColor = getPlayerColor(player)
+    glow.FillTransparency = 0.7
+    glow.OutlineColor = getPlayerColor(player)
+    glow.OutlineTransparency = 0
+    glow.Enabled = VisualsSettings.GlowESP
+    glow.Parent = espFolder
+end
+
+-- Remove ESP for player
+local function removeESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+-- Update all ESP
+function updateESP()
+    for player, espFolder in pairs(ESPObjects) do
+        if espFolder and espFolder.Parent then
+            -- Update colors
+            local color = getPlayerColor(player)
+            
+            -- Update box
+            local box = espFolder:FindFirstChild("Box")
+            if box then
+                box.Color3 = color
+                box.Visible = VisualsSettings.BoxESP
+            end
+            
+            -- Update name
+            local nameBillboard = espFolder:FindFirstChild("Name")
+            if nameBillboard then
+                local nameLabel = nameBillboard:FindFirstChild("TextLabel")
+                if nameLabel then
+                    nameLabel.TextColor3 = color
+                    nameLabel.Visible = VisualsSettings.NameESP
+                end
+            end
+            
+            -- Update glow
+            local glow = espFolder:FindFirstChild("Glow")
+            if glow then
+                glow.FillColor = color
+                glow.OutlineColor = color
+                glow.Enabled = VisualsSettings.GlowESP
+            end
+        else
+            ESPObjects[player] = nil
+        end
+    end
+end
+
+-- Main ESP loop
+function startESPLoop()
+    if ESPLoop then
+        ESPLoop:Disconnect()
+    end
+    
+    ESPLoop = RunService.Heartbeat:Connect(function()
+        -- Clean up dead players
+        for player, espFolder in pairs(ESPObjects) do
+            if not Players:FindFirstChild(player.Name) or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+                removeESP(player)
+            end
+        end
+        
+        -- Add ESP for new players
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not ESPObjects[player] and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                createESP(player)
+            end
+        end
+        
+        -- Update existing ESP
+        updateESP()
+        
+        wait(VisualsSettings.RefreshRate)
+    end)
 end
 
 -- Visuals toggles
@@ -61,11 +202,6 @@ end)
 
 VisualTab:CreateToggle("Name ESP", function(state)
     VisualsSettings.NameESP = state
-    updateESP()
-end)
-
-VisualTab:CreateToggle("Skeleton ESP", function(state)
-    VisualsSettings.SkeletonESP = state
     updateESP()
 end)
 
@@ -81,15 +217,23 @@ end)
 
 VisualTab:CreateSlider("Refresh Rate", 0.1, 5, function(value)
     VisualsSettings.RefreshRate = value
-    restartESPLoop()
+    startESPLoop()
 end)
 
--- Initialize ESP
-restartESPLoop()
+-- Initialize ESP for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        createESP(player)
+    end
+end
+
+-- Start ESP loop
+startESPLoop()
+
+print("didisploit.cc loaded successfully!")
 
 return {
     Config = Config,
     Window = Window,
-    Settings = VisualsSettings,
-    Utils = LoopUtils
+    Settings = VisualsSettings
 }
