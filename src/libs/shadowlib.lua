@@ -657,11 +657,11 @@ function InsideTab:CreateButton(text, callback)
     Button_Roundify_3px.SliceCenter = Rect.new(100, 100, 100, 100)
     Button_Roundify_3px.SliceScale = 0.030
 
-        Button.MouseButton1Click:Connect(function()
-        pcall(callback)
-        play("rbxassetid://178104975")
-    end)
-end  -- ← TEN JEST
+    Button.MouseButton1Click:Connect(function()
+    pcall(callback)
+    play("rbxassetid://178104975")
+end)
+
 
 return InsideTab
 end  -- ← TEN JEST
@@ -671,3 +671,4 @@ end  -- ← TEN JEST
 
 -- FIX: Return table, not function
 return library
+
